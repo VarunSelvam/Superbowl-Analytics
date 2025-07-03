@@ -8,4 +8,4 @@ Analyzed tweets from the 2024 and 2025 Superbowl for Insights.
 
 ## Miscellaneous:
 - 2024: Represents Files for the 2024 Superbowl.
-- 2025: Rperesnts Files for the 2025 Superbowl.
+- 2025: Represents Files for the 2025 Superbowl.
