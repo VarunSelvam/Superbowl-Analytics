@@ -1,5 +1,5 @@
-# Superbowl-Analytics
-Analyzed tweets from the 2024 and 2025 Superbowl for Insights.
+# Super Bowl Analytics
+Analyzed tweets from the 2024 and 2025 Super Bowl for Insights.
 
 ## Files
 - White Paper: Describes how the insights were derived.
