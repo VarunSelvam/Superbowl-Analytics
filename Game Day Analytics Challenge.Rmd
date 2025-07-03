@@ -1,0 +1,531 @@
+---
+title: "Game Day Analytics Challenge"
+author: "Varun Selvam, Shashank Suresh, Devika Mogili, Harika Chitarri"
+date: "2024-02-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load Libraries
+
+```{r}
+#load libraries
+library(tidyverse)
+```
+
+
+## Read in file and assign to variable
+```{r}
+GDAC <- read_csv('Final_Keywords_2024.csv')
+```
+##Identify missing values
+
+```{r}
+#Data Cleaning: 
+head(GDAC)
+
+#Run this code to see which columns are missing values
+find_na <- function(x) sum(is.na(x))
+# Apply function to each column with map()
+map(.x = GDAC, .f = find_na) %>% 
+  unlist() %>% 
+  data.frame()
+
+```
+
+```{r}
+#See the total amount of values for each column and compare to missing values
+length(GDAC$attachments.poll_ids)
+
+#attachments.poll_ids
+#missing
+171454
+#total column length
+171454
+
+#percent of coulmn missing values
+171454/171454
+
+```
+
+```{r}
+length(GDAC$attachments.media_source_tweet_id)
+#missing
+129761
+
+#total column length
+171454
+
+#percent missing
+129761/171454
+```
+
+```{r}
+length(GDAC$entities.cashtags) # I am pretty sure these are all going to 171454, since the column length is tabular. 
+
+#entities.cashtags missing value %
+171179/171454
+```
+
+```{r}
+#withheld.country_codes	missing value %
+length(GDAC$withheld.country_codes)
+#This is also 171454
+171454/171454
+
+```
+
+
+```{r}
+
+#location, percent of missing values:
+51157/171454 #0.2983716
+
+45382/171454  #entities.hashtag percent of values missing,
+# 0.2646891
+53686/171454 #referenced_tweets percent of values missing
+# 0.3131219
+155419/171454 #in_reply_to_user_id
+# 0.9064764
+
+15155/171454 #entities.annotations missing values %
+# 0.08839106
+168863/171454 #geo.place_id missing values %
+# 0.9848881
+103630/171454 #attachments.media_keys missing values %
+# 0.6044187
+89858/171454 #entities.urls missing values %
+# 0.5240939
+
+43784/171454 #entities.mentions missing values %
+```
+
+```{r}
+#Remove uneeeded columns
+
+GDAC_Clean <- GDAC %>% 
+  select(c(-entities.cashtags, -withheld.country_codes, -geo.place_id, -in_reply_to_user_id, -entities.urls, -attachments.media_source_tweet_id,-attachments.media_keys, 
+-attachments.poll_ids, -referenced_tweets, -entities.mentions))
+
+
+```
+
+## Visualization 1 
+```{r}
+#Visualization One
+#Get a list of the keywords and corresponding number
+
+GDAC %>% 
+  group_by(keyword) %>% 
+  summarize(n = n()) %>% 
+  arrange(desc(n = n))
+
+
+#Create dataframe to store top 10 key world values
+top_10 <- data.frame(keyword = c("Progressive", "NFL",
+              "Verizon", "deadpool","Temu", "NERDS Gummy",              "Bud Light", "Uber Eats", "Universal", "FanDuel"),
+           number = c(31952, 31549, 13705, 11276, 10311, 7941, 6753, 6579, 5403, 3208))
+
+# Rearrange values by number in descending order
+top_10$keyword <- factor(top_10$keyword, levels = top_10$keyword[order(-top_10$number)])
+
+# Plot the graph
+top_10 %>%
+  group_by(keyword) %>% 
+  arrange(desc(number)) %>% 
+  ggplot(mapping = aes(x = keyword, y = number)) + 
+  geom_col() + 
+  theme_classic() +
+  theme_minimal() +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        axis.title.y = element_text(margin = margin(r = 12)),
+        axis.text.x = element_text(margin = margin(t = -1)),
+        axis.text.y = element_text(margin = margin(l = 3)),
+        plot.margin = margin(10, 20, 10, 20)) +
+
+  labs(title = "Top 10 Keywords")
+```
+
+## See which brand appeared the most in the tweets.
+
+### Ads by proportion
+```{r}
+
+#Use this value to check and make sure that the function down below returns the correct proportions.
+progressive <- (grepl("Progressive",GDAC_Clean$text,ignore.case = TRUE)) #Search through the text column for any text containing "Progressive"
+
+mean(progressive)
+#rm(progressive_2) to remove variables from the environment
+#rm() command for removing uneeded variables.
+
+?grepl
+
+
+keywords <- c("progressive", "NFL", "Verizon"	,"deadpool", "Temu", "NERDS Gummy",	"Bud Light",	"Uber Eats", "Universal", "FanDuel", "Budweiser",	"Dunkin", "Lindt USA", "Navy", "dev patel",			"dazn", "Robert F. Kennedy Jr. Campaign", "instacart", "Snapchat", "oikos", "Coors Light",
+"Pluto TV","Skechers","hoka","mountain america","us navy","He Gets Us","BMW","State Farm",
+"Etsy","BetMgM","Doritos","meghan trainor, suits cast","Squarespace","E.L.F. Cosmotics",
+"Disney","morgan stanley","DoorDash","Dove","Starry","Foundation to Combat Antisemitism (FCAS)",
+"CBS","Oreo","Discover Credit Card","Reese's","Pfizer","Hellmann's","gift mode","hate.org",
+"yeezy","MGM","CeraVe","silence","Apartments.com","stand up to jewish hate","best foods",
+"Poppi","Google","uefa","Mountain Dew","Pringles","lindor","CrowdStrike","Kia",
+"Paramount+","sonic the hedgehog 2","Michelob ULTRA","T-Mobile","Microsoft","Popeyes","twisters",
+"FX and Hulu","silk","Ford","dove", "m&ms", "popeyes","Homes.com","sunday ticket","Kawasaki",
+"TurboTax","wicked","Bass Pro Shops and Cabela's","pizza hut","victoria beckem", "davis bechem", 
+"usher","Smiths","E*Trade",#if,
+"despicable me 4",#"stok,
+"Volkswagen USA","America First Credit Union", "Drumstick","Monkeyman","century studios","Kungfu Panda","M&M's","hello fresh","veozah","dreamworks","Toyota Tacoma","dareful handle",
+"AllState","martin lawrence, shannon sharpe","Carl's Junior","Booking.com","christianity",
+"ultra beer","frito-lay","max thieriot bode donovan","YouTube TV","uefa champions league"
+)  # Add all your keywords here
+# Convert keywords to lowercase
+keywords <- tolower(keywords)
+
+# Convert text column to lowercase
+GDAC_Clean$text <- tolower(GDAC_Clean$text)
+
+# Function to calculate proportion of rows containing each keyword
+calculate_row_proportion <- function(keyword) {
+  keyword_count <- sum(str_detect(GDAC_Clean$text, keyword))
+  return(keyword_count / nrow(GDAC_Clean))
+}
+
+# Calculate the row proportion for each keyword
+row_proportions <- sapply(keywords, calculate_row_proportion)
+
+# Convert proportions to dataframe
+proportions_df <- data.frame(keyword = names(row_proportions),
+                             row_proportion = row_proportions,
+                             stringsAsFactors = FALSE)
+
+# Print proportions dataframe
+print(proportions_df)
+```
+
+## Organize Data Frame
+```{r}
+proportions_df %>% 
+  group_by(row_proportion) %>% 
+  arrange(desc(row_proportion))
+```
+
+## Ads by count for dataset
+```{r}
+keywords_01 <- c("progressive", "NFL", "Verizon"	,"deadpool", "Temu", "NERDS Gummy",	"Bud Light",	"Uber Eats", "Universal", "FanDuel", "Budweiser",	"Dunkin", "Lindt USA", "Navy", "dev patel",			"dazn", "Robert F. Kennedy Jr. Campaign", "instacart", "Snapchat", "oikos", "Coors Light",
+"Pluto TV","Skechers","hoka","mountain america","us navy","He Gets Us","BMW","State Farm",
+"Etsy","BetMgM","Doritos","meghan trainor, suits cast","Squarespace","E.L.F. Cosmotics",
+"Disney","morgan stanley","DoorDash","Dove","Starry","Foundation to Combat Antisemitism (FCAS)",
+"CBS","Oreo","Discover Credit Card","Reese's","Pfizer","Hellmann's","gift mode","hate.org",
+"yeezy","MGM","CeraVe","silence","Apartments.com","stand up to jewish hate","best foods",
+"Poppi","Google","uefa","Mountain Dew","Pringles","lindor","CrowdStrike","Kia",
+"Paramount+","sonic the hedgehog 2","Michelob ULTRA","T-Mobile","Microsoft","Popeyes","twisters",
+"FX and Hulu","silk","Ford","dove", "m&ms", "popeyes","Homes.com","sunday ticket","Kawasaki",
+"TurboTax","wicked","Bass Pro Shops and Cabela's","pizza hut","victoria beckem", "davis bechem", 
+"usher","Smiths","E*Trade",#if,
+"despicable me 4",#"stok,
+"Volkswagen USA","America First Credit Union", "Drumstick","Monkeyman","century studios","Kungfu Panda","M&M's","hello fresh","veozah","dreamworks","Toyota Tacoma","dareful handle",
+"AllState","martin lawrence, shannon sharpe","Carl's Junior","Booking.com","christianity",
+"ultra beer","frito-lay","max thieriot bode donovan","YouTube TV","uefa champions league"
+)  # Add all your keywords here
+# Convert keywords to lowercase
+keywords_01 <- tolower(keywords_01)
+
+# Convert text column to lowercase
+GDAC_Clean$text <- tolower(GDAC_Clean$text)
+
+# Function to provide total number of rows for each keyword.
+calculate_count <- function(keyword) {
+  keyword_count <- sum(str_detect(GDAC_Clean$text, keyword))
+  return(keyword_count)
+}
+
+# Calculate the row count for each keyword
+calculate_counts <- sapply(keywords_01, calculate_count)
+
+# Create dataframe with keyword counts
+count_df <- data.frame(keywords = keywords_01,
+                       calculate_count = calculate_counts,
+                       stringsAsFactors = FALSE)
+
+# Print counts dataframe
+print(count_df)
+```
+
+
+```{r}
+#table with tweet counts in descending order
+count_df %>% 
+  group_by(calculate_count) %>% 
+  arrange(desc(calculate_count))
+#graph of table
+count_df %>% 
+  ggplot(aes(x = keywords, y = calculate_count)) + 
+  geom_col() + 
+  theme_classic() +
+  labs(title = "Superbowl")
+
+
+#Create dataframe to store top 10 key world values
+top_10_Brands <- data.frame(keyword = c("NFL", "Usher", "Deadpool", "Temu", "State Farm",              "Wicked", "Verizon", "Dunkin", "Ford", "CBS"),
+           number = c(42106, 23187, 14213, 10132, 6418, 5876, 5786, 2487, 2142, 1535))
+
+
+top_10_Brands %>% 
+  group_by(number) %>% 
+  arrange(desc(number)) %>% 
+  ggplot(aes(x = keyword, y = number)) + 
+  geom_col() + 
+  theme_classic() +
+  labs(title = "Superbowl")
+
+write.csv(count_df, "Super_Bowl Ad by Tweet Count.csv", row.names = F)
+write.csv(proportions_df, "Super_Bowl_Ad by Proportion Count.csv", row.names=F)
+```
+
+##Tweets Day before and tweets day after:
+```{r}
+three_days <- read.csv('count_three_days.csv')
+
+merged_data <- inner_join(three_days, count_df, by = "keywords")
+
+print(merged_data)
+
+merged_data %>% 
+  select(keywords,count,calculate_count) %>% 
+  arrange(desc(calculate_count))
+
+merged_data_01 <- merged_data %>%
+  group_by(keywords) %>%
+  summarise(count = sum(count), calculate_count = first(calculate_count)) %>% 
+  mutate(difference = calculate_count - count) %>% 
+  arrange(desc(difference))
+  
+
+# Output
+print(merged_data_01)
+write.csv(merged_data_01, "SuperBowl_Ad_Comparison.csv", row.names=F)
+
+
+```
+```{r}
+#Check Tweets
+length(progressive)
+sum(progressive)
+sum(progressive)/length(progressive)
+```
+
+
+# CORRECT VERSION WITH FULL SUPERBOWL TWEETS
+```{r}
+brand_name <- read.csv('count_three_days.csv')
+
+head(brand_name)
+
+brand_name_01 <- brand_name %>%
+  group_by(brandname) %>% 
+  filter(date_id == 3) %>% 
+  select(brandname, count) %>% 
+  arrange(desc(count))
+
+print(brand_name_01)
+
+write.csv(brand_name_01, "Full_SuperBowl_Tweets.csv", row.names = F)
+
+brand_name_02 <- brand_name %>% # If you want this in proportion, I already did this in Excel.
+  group_by(brandname) %>%
+  mutate(proportion = count/1056600) %>%
+  filter(date_id == 3) %>% 
+  select(brandname, count, proportion) %>% 
+  arrange(desc(count))
+#I did this in excel when I opened the Full_SuperBowl_Tweets.csv file".
+
+print(brand_name_02)
+```
+
+## CORRECT VERSION: Difference in Superbowl Ads before and after the game. 
+```{r}
+brand_name %>% 
+  
+  
+brand_name_03 <- brand_name %>%
+  group_by(brandname) %>%
+  mutate(difference = count[which(date_id == 3)] - sum(count[which(date_id %in% c(1, 2))])) %>%
+  mutate(before_superbowl = sum(count[which(date_id %in% c(1, 2))])) %>% 
+  filter(date_id ==3) %>% 
+  select(brandname, count, before_superbowl, difference) %>% 
+  arrange(desc(difference))
+
+print(brand_name_03)
+
+write.csv(brand_name_03, "Difference.csv",row.names = F)
+```
+
+## Quarter_Analysis #1 Which quarter had the most tweets
+
+```{r}
+#Ask Stan or someone about this...
+quarter_result <- read.csv("Quarter_and_Brand_Result.csv")
+
+merge_data <- inner_join(brand_name_01, quarter_result, by = "brandname", copy = TRUE)
+
+print(merge_data)
+
+merge_data_01 <- merge_data %>% 
+  group_by(quarter) %>% 
+  summarize(
+    sum(count))
+  
+print(merge_data_01)
+
+#write.csv(merge_data_01, "Tweets by Quarter.csv", row.names = F)
+
+find_na1 <- function(x) sum(is.na(x))
+# Apply function to each column with map()
+map(.x = merge_data, .f = find_na1) %>% 
+  unlist() %>% 
+  data.frame()
+#When we do a left join it excludes 0.066 of the values, it shows up as missing. But since it's only 6% we are going to ignore it. The proportions should still be the same. 71929 is the missing value.
+
+duplicates <- merge_data[duplicated(merge_data), 
+
+# View the duplicated rows
+print(duplicates)
+```
+
+## Most Liked Tweet. 
+```{r}
+
+  Liked_Tweet <- GDAC_Correct %>% 
+  group_by(keyword) %>% 
+  summarize(total_likes = sum(public_metrics.like_count)) %>% 
+  arrange(desc(total_likes))
+
+print(Liked_Tweet)
+  
+write.csv(Liked_Tweet, file = "C:\\Users\\User\\Box Sync\\Business Analytics Degree\\Game Day Analytics\\Most_Liked_Tweets.csv", row.names = F)
+
+
+write.csv(Liked_Tweet, file = "C:/Users/User/Desktop/Most_Liked_Tweets.csv", row.names = FALSE)
+setwd("C:\\Users\\User\\Box Sync\\Business Analytics Degree\\Game Day Analytics")
+
+```
+
+
+## Which Location had the most tweets?
+
+```{r}
+
+ 
+keywords_02 <- c("Alabama", "Alaska", "Arizona", "Arkansas", "California",
+"Colorado", "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", "New Jersey","New Mexico", "New York", "North Carolina", "North Dakota", "Ohio",
+"Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", "West Virginia", "Wisconsin", "Wyoming", "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD","MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "Mexico", "New York", "Los Angeles", "Chicago", "Houston", "Phoenix", "Philadelphia", "San Antonio", "San Diego", "Dallas", "San Jose", "Austin", "Jacksonville", "San Francisco", "Indianapolis", "Columbus", "Fort Worth", "Charlotte", "Seattle", "Denver", "Washington", "Orlando", "Miami", "Tampa", "Portland", "Kansas City"
+)
+
+  # Add all your keywords here
+# Convert keywords to lowercase
+keywords_02 <- tolower(keywords_02)
+
+# Convert text column to lowercase
+GDAC_Correct$text <- tolower(GDAC_Correct$text)
+
+# Function to provide total number of rows for each keyword.
+calculate_count <- function(keyword) {
+  keyword_count <- sum(str_detect(GDAC_Correct$text, keyword))
+  return(keyword_count)
+}
+
+# Calculate the row count for each keyword
+calculate_counts <- sapply(keywords_02, calculate_count)
+
+# Create dataframe with keyword counts
+count_df_location_01 <- data.frame(keywords = keywords_02,
+                       calculate_count = calculate_counts,
+                       stringsAsFactors = FALSE)
+
+# Print counts dataframe
+print(count_df_location_01)
+
+count_df_location_01 %>% 
+  arrange(desc(calculate_count))
+
+
+
+
+# Time to map state abbreviations, and cities to states: 
+
+# Sample data
+df <- data.frame(keywords_02, calculate_counts)
+
+# Create a mapping of state abbreviations to their full names
+state_mapping <- c("AL" = "Alabama", "AK" = "Alaska", "AZ" = "Arizona", "AR" = "Arkansas", "CA" = "California", "CO" = "Colorado", "CT" = "Connecticut", "DE" = "Delaware", "FL" = "Florida", "GA" = "Georgia", "HI" = "Hawaii", "ID" = "Idaho", "IL" = "Illinois", "IN" = "Indiana", "IA" = "Iowa",
+"KS" = "Kansas", "KY" = "Kentucky", "LA" = "Louisiana", "ME" = "Maine", "MD" = "Maryland",
+"MA" = "Massachusetts", "MI" = "Michigan", "MN" = "Minnesota", "MS" = "Mississippi", "MO" = "Missouri",  "MT" = "Montana", "NE" = "Nebraska", "NV" = "Nevada", "NH" = "New Hampshire", "NJ" = "New Jersey", "NM" = "New Mexico", "NY" = "New York", "NC" = "North Carolina", "ND" = "North Dakota", "OH" = "Ohio","OK" = "Oklahoma", "OR" = "Oregon", "PA" = "Pennsylvania", "RI" = "Rhode Island", "SC" = "South Carolina", "SD" = "South Dakota", "TN" = "Tennessee", "TX" = "Texas", "UT" = "Utah", "VT" = "Vermont","VA" = "Virginia", "WA" = "Washington", "WV" = "West Virginia", "WI" = "Wisconsin", "WY" = "Wyoming")
+
+# Create a mapping of city names to their respective states
+city_mapping <- c("New York" = "New York", "Los Angeles" = "California", "Chicago" = "Illinois",
+"Houston" = "Texas", "Phoenix" = "Arizona", "Philadelphia" = "Pennsylvania", "San Antonio" = "Texas", "San Diego" = "California", "Dallas" = "Texas", "San Jose" = "California", "Austin" = "Texas", "Jacksonville" = "Florida", "San Francisco" = "California", "Indianapolis" = "Indiana", "Columbus" = "Ohio", "Fort Worth" = "Texas", "Charlotte" = "North Carolina", "Seattle" = "Washington", "Denver" = "Colorado", "Washington" = "District of Columbia", "Orlando" = "Florida", "Miami" = "Florida", "Tampa" = "Florida", "Portland" = "Oregon", "Kansas City" = "Missouri")
+
+# Create a mapping of state abbreviations to their full names
+state_mapping <- c("AL" = "Alabama", "AK" = "Alaska", "AZ" = "Arizona", "AR" = "Arkansas", "CA" = "California", "CO" = "Colorado", "CT" = "Connecticut", "DE" = "Delaware", "FL" = "Florida", "GA" = "Georgia", "HI" = "Hawaii", "ID" = "Idaho", "IL" = "Illinois", "IN" = "Indiana", "IA" = "Iowa",
+                   "KS" = "Kansas", "KY" = "Kentucky", "LA" = "Louisiana", "ME" = "Maine", "MD" = "Maryland", "MA" = "Massachusetts", "MI" = "Michigan", "MN" = "Minnesota", "MS" = "Mississippi", "MO" = "Missouri",  "MT" = "Montana", "NE" = "Nebraska", "NV" = "Nevada", "NH" = "New Hampshire", "NJ" = "New Jersey", "NM" = "New Mexico", "NY" = "New York", "NC" = "North Carolina", "ND" = "North Dakota", "OH" = "Ohio","OK" = "Oklahoma", "OR" = "Oregon", "PA" = "Pennsylvania", "RI" = "Rhode Island", "SC" = "South Carolina", "SD" = "South Dakota", "TN" = "Tennessee", "TX" = "Texas", "UT" = "Utah", "VT" = "Vermont","VA" = "Virginia", "WA" = "Washington", "WV" = "West Virginia", "WI" = "Wisconsin", "WY" = "Wyoming")
+
+# Create a mapping of city names to their respective states
+city_mapping <- c("New York" = "New York", "Los Angeles" = "California", "Chicago" = "Illinois",
+                  "Houston" = "Texas", "Phoenix" = "Arizona", "Philadelphia" = "Pennsylvania", "San Antonio" = "Texas", "San Diego" = "California", "Dallas" = "Texas", "San Jose" = "California", "Austin" = "Texas", "Jacksonville" = "Florida", "San Francisco" = "California", "Indianapolis" = "Indiana", "Columbus" = "Ohio", "Fort Worth" = "Texas", "Charlotte" = "North Carolina", "Seattle" = "Washington", "Denver" = "Colorado", "Washington" = "District of Columbia", "Orlando" = "Florida", "Miami" = "Florida", "Tampa" = "Florida", "Portland" = "Oregon", "Kansas City" = "Missouri")
+
+# Map city names to their respective states
+df$state_name <- ifelse(df$keywords_02 %in% names(state_mapping), state_mapping[df$keywords_02], df$keywords_02)
+
+# Map state abbreviations to their full names
+df$state_name <- ifelse(df$keywords_02 %in% names(city_mapping), city_mapping[df$keywords_02], df$state_name)
+
+# Group by state names and calculate the sum of counts
+result <- aggregate(calculate_counts ~ state_name, df, sum)
+
+# Rename columns for better clarity
+names(result) <- c("State Name", "Total Tweets")
+
+# Display the result
+print(result)
+write.csv(count_df_location_01, "Location_01.csv", row.names = F)
+write.csv(result,"Location.csv",row.names = F)
+```
+
+```{r}
+GDAC_Correct <- read.csv("final_tweets_corrected_2024.csv")
+
+full_tweets <- read.csv("Full_SuperBowl_Tweets.csv")
+
+full_tweets_01 <- full_tweets %>% 
+  group_by(Celebrity) %>% 
+  summarize(median(count),
+            mean(count))
+
+print(full_tweets_01)
+write.csv(full_tweets_01,"Celebrity_vs_No_Celebrity.csv",row.names = F)
+
+```
+
+
+## Experiment w/ GDAC Correct File
+```{r}
+GDAC_Correct <- read.csv("final_tweets_corrected_2024.csv")
+
+GDAC_Correct %>% 
+  group_by(keyword) %>% 
+  summarize(n = n()) %>% 
+  arrange(desc(n = n))
+
+find_na <- function(x) sum(is.na(x))
+# Apply function to each column with map()
+map(.x = GDAC_Correct, .f = find_na) %>% 
+  unlist() %>% 
+  data.frame()
+
+swift<- grepl("Taylor Swift", GDAC_Correct$text, ignore.case = TRUE)
+
+mean(swift)
+
+```
