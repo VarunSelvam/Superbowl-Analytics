@@ -1,6 +1,6 @@
 library(tidyverse)
 
-superbowl <- read_csv("C:\\Users\\User\\Downloads\\gd_tweets_2023_FULL.csv")
+superbowl <- read_csv("gd_tweets_2023_FULL.csv")
 head(superbowl)
 glimpse(superbowl)
 
